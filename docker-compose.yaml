@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=django
+      - POSTGRES_USER=django
+      - POSTGRES_PASSWORD=django
+  api:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./static:/app/static
+    ports:
+      - 7999:8000"
+    environment:
+      - HOSTNAME=https://django.filipkowalewski.xyz
+      - DEBUG=False
+      - POSTGRES_NAME=django
+      - POSTGRES_USER=django
+      - POSTGRES_PASSWORD=django
+      - POSTGRES_HOST=db
+    depends_on:
+      - db
