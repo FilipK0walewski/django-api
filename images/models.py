@@ -7,6 +7,11 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
+
 
 class Tier(models.Model):
     name = models.CharField(unique=True, null=False, max_length=50)
@@ -42,7 +47,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
-    tier = models.ForeignKey(Tier, blank=True, null=True, on_delete=models.CASCADE)
+    tier = models.ForeignKey(Tier, blank=True, null=True, on_delete=models.CASCADE, default=1)
 
     USERNAME_FIELD = 'username'
     

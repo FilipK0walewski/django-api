@@ -1,5 +1,6 @@
 import io
 import os
+import uuid
 
 from django.conf import settings
 from django.http import FileResponse, HttpResponse
@@ -9,7 +10,7 @@ from django.utils import timezone
 from PIL import Image
 
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet, ModelViewSet
@@ -20,7 +21,7 @@ from .serializers import ExpiringLinkSerializer, ImageSerializer
 
 class ImageViewSet(ModelViewSet):
 
-    authentication_classes = [SessionAuthentication]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ImageSerializer
 
@@ -38,7 +39,7 @@ class ImageViewSet(ModelViewSet):
     def retrieve(self, request, pk):
         size = request.query_params.get('size')
         if size is not None and size.isnumeric() is False:
-            return Response({'message': 'Invalid size.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Size must be an signed integer.'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         if size is not None:
             size = int(size)
@@ -48,13 +49,11 @@ class ImageViewSet(ModelViewSet):
 
         if image.owner.id != request.user.id:
             return Response(status=status.HTTP_403_FORBIDDEN)
-
         if os.path.exists(image_path) is False:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        
         if size is None and request.user.tier.original_image_access is False:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        elif size is not None and size not in request.user.tier.sizes:
+        if size is not None and size not in request.user.tier.sizes:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
         if size is None:
@@ -78,42 +77,52 @@ class ImageViewSet(ModelViewSet):
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid() is False:
-            return Response({'message': 'Invalid image.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': ' Image must be PNG or JPG format.'}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
         serializer.save(user=request.user)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ExpiringLinkViewSet(ViewSet):
 
-    authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
     serializer_class = ExpiringLinkSerializer
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     def retrieve(self, request, pk):
-        permission_classes = None
+        try:
+            uuid.UUID(pk)
+        except ValueError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+            
         link = get_object_or_404(ExpiringLink, uuid=pk)
-
         if timezone.now() > link.expires_at:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'message': 'Link expired.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = ExpiringLinkSerializer(link, many=False)
-        return FileResponse(open(serializer.data['image']['image_path'], 'rb'))
+        image = get_object_or_404(ImageModel, id=link.image_id)
+        return FileResponse(open(image.image.path, 'rb'))
 
     def create(self, request):
         if request.user.tier is None:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'mesage': 'User has no tier.'}, status=status.HTTP_403_FORBIDDEN)
 
         if request.user.tier.expiring_link_access is False:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
+        if request.data['image_id'].isdigit() is False:
+            return Response({'message': 'Image id must be an integer.'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
         img = get_object_or_404(ImageModel, id=request.data['image_id'])
         if img.owner.id != request.user.id:
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response({'mesage': 'You are not owner of this image.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ExpiringLinkSerializer(data=request.data)
         if serializer.is_valid() is False:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Invalid number of seconds, must be integer greater than 299 and lesser than 30001.'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
         
         serializer.save()
         expiring_link = f'{settings.HOSTNAME}/expiring-link/{serializer.data["uuid"]}'
-        return Response({'link': expiring_link})
+        return Response({'link': expiring_link}, status=status.HTTP_201_CREATED)

@@ -66,3 +66,12 @@ class ExpiringLinkSerializer(serializers.Serializer):
         expires_at = timezone.now() + timedelta(seconds=validated_data['seconds'])
         image = ImageModel.objects.get(id=validated_data['image_id'])
         return ExpiringLink.objects.create(image=image, expires_at=expires_at, uuid=uuid.uuid4())
+
+    def is_valid(self):
+        if super().is_valid() is not True:
+            return False
+        
+        seconds = self.validated_data['seconds']
+        if not(30000 >= seconds >= 300):
+            return False
+        return str(seconds).isdigit()
