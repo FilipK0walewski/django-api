@@ -16,7 +16,11 @@ docker compose exec web python manage.py create_tiers
 docker compose exec web python manage.py collectstatic
 ```
 
-Now you api should work fine at http://127.0.0.1:7999.
+Now you api should work fine at http://127.0.0.1:7999. To create superuser run
+
+```
+docker compose exec web python manage.py createsuperuser
+```
 
 ## Tests
 
