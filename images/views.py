@@ -87,7 +87,14 @@ class ImageViewSet(ModelViewSet):
         if serializer.is_valid() is False:
             return Response({'message': ' Image must be PNG or JPG format.'}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
         serializer.save(user=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        data = serializer.data
+        tmp = 'https://' if request.is_secure() else 'http://'
+        hostname = request.get_host()
+        for k, v in serializer.data['urls'].items():
+            data['urls'][k] = tmp + hostname + v 
+
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class ExpiringLinkViewSet(ViewSet):
