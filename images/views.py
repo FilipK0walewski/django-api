@@ -1,5 +1,6 @@
 import io
 import os
+import socket
 import uuid
 
 from django.conf import settings
@@ -34,6 +35,13 @@ class ImageViewSet(ModelViewSet):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page, many=True)
+
+        tmp = 'https://' if request.is_secure() else 'http://'
+        hostname = request.get_host()
+        for img in serializer.data:
+            for k, v in img['urls'].items():
+                img['urls'][k] = tmp + hostname + v 
+
         return self.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk):
@@ -124,5 +132,7 @@ class ExpiringLinkViewSet(ViewSet):
             return Response({'message': 'Invalid number of seconds, must be integer greater than 299 and lesser than 30001.'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
         
         serializer.save()
-        expiring_link = f'{settings.HOSTNAME}/expiring-link/{serializer.data["uuid"]}'
+        tmp = 'https' if request.is_secure() else 'http'
+        hostname = request.get_host()
+        expiring_link = f'{tmp}://{hostname}/expiring-link/{serializer.data["uuid"]}'
         return Response({'link': expiring_link}, status=status.HTTP_201_CREATED)

@@ -1,21 +1,23 @@
+version: '3'
 services:
   db:
     image: postgres
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - ./postgres_data/db:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=django
       - POSTGRES_USER=django
       - POSTGRES_PASSWORD=django
-  api:
-    build: .
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - ./static:/app/static
+      - static_volume:/app/static
     ports:
-      - 7999:8000"
+      - "8000:8000"
     environment:
-      - HOSTNAME=https://django.filipkowalewski.xyz
       - DEBUG=False
       - POSTGRES_NAME=django
       - POSTGRES_USER=django
@@ -23,3 +25,15 @@ services:
       - POSTGRES_HOST=db
     depends_on:
       - db
+  nginx:
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    volumes:
+      - static_volume:/static
+    ports:
+      - 7999:7999
+    depends_on:
+      - web
+volumes:
+  static_volume:

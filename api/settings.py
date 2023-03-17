@@ -2,12 +2,12 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-HOSTNAME = os.environ.get('HOSTNAME', 'http://127.0.0.1:8000')
 
-SECRET_KEY = os.environ.get('SECRET_KEY', '123123')
+SECRET_KEY = os.environ.get('SECRET_KEY', '3f9ecf9ca692785643be429e912b8e1b')
 DEBUG = False if os.environ.get('DEBUG') == 'False' else True
 
 ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://django.filipkowalewski.xyz', 'https://www.django.filipkowalewski.xyz']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -67,8 +67,10 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-STATIC_URL = 'static/'
-MEDIA_ROOT = 'static/'
+
+STATIC_URL = '/static/'
+MEDIA_ROOT = 'static/users/'
+STATIC_ROOT = "static/"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -78,6 +80,5 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
     ]
 }

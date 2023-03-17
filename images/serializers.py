@@ -32,7 +32,7 @@ class ImageSerializer(serializers.Serializer):
 
     def get_urls(self, obj):
         urls = {}
-        img_url = f'{settings.HOSTNAME}/images/{obj.id}'
+        img_url = f'/images/{obj.id}'
         for size in obj.owner.tier.sizes:
             urls[f'{size}px'] = f'{img_url}?size={size}'
 
